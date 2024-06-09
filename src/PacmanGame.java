@@ -1,9 +1,6 @@
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
+import java.awt.event.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -19,7 +16,6 @@ public class PacmanGame {
     private Image enemyImage;
 
     public PacmanGame(String boardSize) {
-        // Load images
         try {
             pacmanImage = ImageIO.read(new File("src/sprites/pacman.png"));
             enemyImage = ImageIO.read(new File("src/sprites/sprite_red.png"));
@@ -32,40 +28,29 @@ public class PacmanGame {
     public void displayMainMenu() {
         JFrame mainMenuFrame = new JFrame("Pacman Game - Main Menu");
         mainMenuFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        mainMenuFrame.setSize(400, 300);
+        mainMenuFrame.setSize(800, 600);
         mainMenuFrame.setLayout(new GridLayout(3, 1));
 
         JButton newGameButton = new JButton("New Game");
         JButton highScoresButton = new JButton("High Scores");
         JButton exitButton = new JButton("Exit");
 
-        newGameButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                mainMenuFrame.dispose();
-                startNewGame();
-            }
+        newGameButton.addActionListener(e -> {
+            mainMenuFrame.dispose();
+            startNewGame();
         });
 
-        highScoresButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                // Implement display of high scores
-            }
+        highScoresButton.addActionListener(e -> {
+            // Implement display of high scores
         });
 
-        exitButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                System.exit(0);
-            }
-        });
+        exitButton.addActionListener(e -> System.exit(0));
 
         mainMenuFrame.add(newGameButton);
         mainMenuFrame.add(highScoresButton);
         mainMenuFrame.add(exitButton);
 
-        mainMenuFrame.setLocationRelativeTo(null); // Center the window
+        mainMenuFrame.setLocationRelativeTo(null);
         mainMenuFrame.setVisible(true);
     }
 
@@ -81,11 +66,26 @@ public class PacmanGame {
     }
 
     private void initializeGame(String boardSize) {
-        this.player = new Player(1, 1, 1, 3); // Initialize player with 3 lives
-        this.enemies = new ArrayList<>();
-        this.enemies.add(new Enemy(5, 5, 1));
-        this.enemies.add(new Enemy(10, 10, 1));
         this.board = new Board(boardSize);
+
+        // Ensure player and enemies spawn in different positions
+        int playerX, playerY, enemyX1, enemyY1, enemyX2, enemyY2;
+        int initialSpeed = 1;
+        int playerLives = 3;
+
+        do {
+            playerX = (int) (Math.random() * board.getWidth());
+            playerY = (int) (Math.random() * board.getHeight());
+            enemyX1 = (int) (Math.random() * board.getWidth());
+            enemyY1 = (int) (Math.random() * board.getHeight());
+            enemyX2 = (int) (Math.random() * board.getWidth());
+            enemyY2 = (int) (Math.random() * board.getHeight());
+        } while ((playerX == enemyX1 && playerY == enemyY1) || (playerX == enemyX2 && playerY == enemyY2) || (enemyX1 == enemyX2 && enemyY1 == enemyY2));
+
+        this.player = new Player(playerX, playerY, initialSpeed, playerLives);
+        this.enemies = new ArrayList<>();
+        this.enemies.add(new Enemy(enemyX1, enemyY1, initialSpeed));
+        this.enemies.add(new Enemy(enemyX2, enemyY2, initialSpeed));
         this.boardPanel = new BoardPanel(board, player, enemies, pacmanImage, enemyImage);
     }
 
@@ -94,17 +94,27 @@ public class PacmanGame {
         gameFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         gameFrame.add(boardPanel);
         gameFrame.pack();
-        gameFrame.setLocationRelativeTo(null); // Center the window
+        gameFrame.setSize(board.getWidth() * 40, board.getHeight() * 40);
+        gameFrame.setLocationRelativeTo(null);
         gameFrame.setVisible(true);
+        gameFrame.setResizable(true);
+
+        gameFrame.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                boardPanel.setSize(gameFrame.getSize());
+                boardPanel.repaint();
+            }
+        });
 
         boardPanel.addKeyListener(new PlayerMovementListener());
         boardPanel.setFocusable(true);
         boardPanel.requestFocusInWindow();
 
         new Thread(() -> {
-            while (player.getLives() > 0) { // Check if player has lives remaining
+            while (player.getLives() > 0) {
                 try {
-                    Thread.sleep(500); // Game loop sleep duration
+                    Thread.sleep(500);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -112,14 +122,14 @@ public class PacmanGame {
                 for (Enemy enemy : enemies) {
                     enemy.move(board);
                     if (enemy.checkCollision(player)) {
-                        player.loseLife(); // Subtract a life on collision
+                        player.loseLife();
                         if (player.getLives() <= 0) {
-                            gameOver(); // End game if no lives left
+                            gameOver();
                             return;
                         }
                     }
                 }
-                boardPanel.repaint();
+                boardPanel.render();
             }
         }).start();
     }
@@ -156,7 +166,7 @@ public class PacmanGame {
 
             if (dx != 0 || dy != 0) {
                 player.move(dx, dy, board);
-                boardPanel.repaint();
+                boardPanel.render();
             }
         }
     }
