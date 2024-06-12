@@ -1,3 +1,5 @@
+import java.util.List;
+
 public abstract class Character {
     protected int x, y;
     protected int speed;
@@ -24,5 +26,6 @@ public abstract class Character {
         this.speed = speed;
     }
 
-    public abstract void move(Board board);
+
+    public abstract void move(Board board, List<Enemy> enemies);
 }

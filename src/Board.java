@@ -1,5 +1,7 @@
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
+
 
 public class Board {
     private int width;
@@ -7,11 +9,12 @@ public class Board {
     private boolean[][] walls;
     private boolean[][] pellets;
     private List<Upgrade> upgrades;
+    //private static final Random RANDOM = new Random();
 
     public static final int[][] SMALL_MAP = {
             {1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
             {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
-            {1, 0, 1, 1, 1, 1, 1, 1, 0, 1},
+            {1, 0, 1, 1, 0, 0, 1, 1, 0, 1},
             {1, 0, 1, 0, 0, 0, 0, 1, 0, 1},
             {1, 0, 1, 0, 1, 1, 0, 1, 0, 1},
             {1, 0, 1, 0, 1, 1, 0, 1, 0, 1},
@@ -119,7 +122,6 @@ public class Board {
 
         upgrades = new ArrayList<>();
     }
-
     private void initializeBoard(int[][] map) {
         walls = new boolean[height][width];
         pellets = new boolean[height][width];
@@ -136,6 +138,38 @@ public class Board {
             }
         }
     }
+
+    public List<int[]> getValidSpawnPositions() {
+        List<int[]> positions = new ArrayList<>();
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (!walls[y][x]) {
+                    positions.add(new int[]{x, y});
+                }
+            }
+        }
+        return positions;
+    }
+
+/*    private void spawnUpgrades() {
+        int numberOfUpgrades = RANDOM.nextInt(5) + 1; // Random number of upgrades between 1 and 5
+        for (int i = 0; i < numberOfUpgrades; i++) {
+            int x, y;
+            do {
+                x = RANDOM.nextInt(width);
+                y = RANDOM.nextInt(height);
+            } while (isWall(x, y) || hasPellet(x, y) || upgradeExistsAt(x, y));
+
+            String[] upgradeTypes = { Upgrade.SPEED_BOOST, Upgrade.EXTRA_LIFE, Upgrade.DOUBLE_POINTS, Upgrade.PASS_THROUGH_WALLS, Upgrade.SLOW_ENEMIES };
+            String type = upgradeTypes[RANDOM.nextInt(upgradeTypes.length)];
+
+            upgrades.add(new Upgrade(x, y, type));
+        }
+    }*/
+
+/*    private boolean upgradeExistsAt(int x, int y) {
+        return upgrades.stream().anyMatch(upgrade -> upgrade.getX() == x && upgrade.getY() == y);
+    }*/
 
     public int getWidth() {
         return width;
@@ -168,4 +202,16 @@ public class Board {
     public void removeUpgrade(Upgrade upgrade) {
         upgrades.remove(upgrade);
     }
+
+    public boolean hasPellets() {
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (pellets[y][x]) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
 }

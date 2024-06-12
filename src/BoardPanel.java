@@ -1,14 +1,23 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
+import javax.imageio.ImageIO;
 
 public class BoardPanel extends JPanel {
-    private final Board board;
-    private final Player player;
-    private final List<Enemy> enemies;
-    private final Image pacmanImage;
-    private final Image enemyImage;
+    Board board;
+    Player player;
+    List<Enemy> enemies;
+    Image pacmanImage;
+    Image enemyImage;
+    Image speedBoostImage;
+    Image extraLifeImage;
+    Image doublePointsImage;
+    Image passThroughWallsImage;
+    Image slowEnemiesImage;
+    Image pelletImage;
     private BufferedImage offscreenImage;
     private Graphics2D offscreenGraphics;
 
@@ -18,13 +27,29 @@ public class BoardPanel extends JPanel {
         this.enemies = enemies;
         this.pacmanImage = pacmanImage;
         this.enemyImage = enemyImage;
+
+        this.speedBoostImage = loadImage("src/sprites/apple.png", 40, 40);
+        this.extraLifeImage = loadImage("src/sprites/cherry.png", 40, 40);
+        this.doublePointsImage = loadImage("src/sprites/green_apple.png", 40, 40);
+        this.passThroughWallsImage = loadImage("src/sprites/strawberry.png", 40, 40);
+        this.slowEnemiesImage = loadImage("src/sprites/rod.png", 40, 40);
+        this.pelletImage = loadImage("src/sprites/pellet.png", 20, 20); // Load and resize your pellet image here
+
         setPreferredSize(new Dimension(board.getWidth() * 40, board.getHeight() * 40));
     }
 
-    @Override
-    protected void paintComponent(Graphics g) {
-        super.paintComponent(g);
+    private Image loadImage(String path, int width, int height) {
+        try {
+            Image img = ImageIO.read(new File(path));
+            return img.getScaledInstance(width, height, Image.SCALE_SMOOTH);
+        } catch (IOException e) {
+            System.err.println("Error loading image: " + path);
+            e.printStackTrace();
+            return null;
+        }
+    }
 
+    public void render() {
         if (offscreenImage == null || offscreenImage.getWidth() != getWidth() || offscreenImage.getHeight() != getHeight()) {
             offscreenImage = new BufferedImage(getWidth(), getHeight(), BufferedImage.TYPE_INT_ARGB);
             offscreenGraphics = offscreenImage.createGraphics();
@@ -43,10 +68,32 @@ public class BoardPanel extends JPanel {
                     offscreenGraphics.setColor(Color.BLUE);
                     offscreenGraphics.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
                 } else if (board.hasPellet(x, y)) {
-                    offscreenGraphics.setColor(Color.YELLOW);
-                    int pelletSize = cellSize / 3;
-                    offscreenGraphics.fillOval(x * cellSize + (cellSize - pelletSize) / 2, y * cellSize + (cellSize - pelletSize) / 2, pelletSize, pelletSize);
+                    offscreenGraphics.drawImage(pelletImage, x * cellSize + (cellSize - pelletImage.getWidth(null)) / 2, y * cellSize + (cellSize - pelletImage.getHeight(null)) / 2, null);
                 }
+            }
+        }
+
+        for (Upgrade upgrade : board.getUpgrades()) {
+            Image upgradeImage = null;
+            switch (upgrade.getType()) {
+                case Upgrade.SPEED_BOOST:
+                    upgradeImage = speedBoostImage;
+                    break;
+                case Upgrade.EXTRA_LIFE:
+                    upgradeImage = extraLifeImage;
+                    break;
+                case Upgrade.DOUBLE_POINTS:
+                    upgradeImage = doublePointsImage;
+                    break;
+                case Upgrade.PASS_THROUGH_WALLS:
+                    upgradeImage = passThroughWallsImage;
+                    break;
+                case Upgrade.SLOW_ENEMIES:
+                    upgradeImage = slowEnemiesImage;
+                    break;
+            }
+            if (upgradeImage != null) {
+                offscreenGraphics.drawImage(upgradeImage, upgrade.getX() * cellSize, upgrade.getY() * cellSize, cellSize, cellSize, null);
             }
         }
 
@@ -54,26 +101,29 @@ public class BoardPanel extends JPanel {
         int playerY = player.getY() * cellSize;
         int direction = player.getDirection();
 
+        Graphics2D g2d = (Graphics2D) offscreenGraphics.create();
+
         switch (direction) {
             case Player.RIGHT:
-                offscreenGraphics.drawImage(pacmanImage, playerX, playerY, cellSize, cellSize, null);
+                g2d.drawImage(pacmanImage, playerX, playerY, cellSize, cellSize, null);
                 break;
             case Player.LEFT:
-                offscreenGraphics.rotate(Math.toRadians(180), playerX + cellSize / 2.0, playerY + cellSize / 2.0);
-                offscreenGraphics.drawImage(pacmanImage, playerX, playerY, cellSize, cellSize, null);
-                offscreenGraphics.rotate(-Math.toRadians(180), playerX + cellSize / 2.0, playerY + cellSize / 2.0);
+                g2d.rotate(Math.toRadians(180), playerX + cellSize / 2.0, playerY + cellSize / 2.0);
+                g2d.drawImage(pacmanImage, playerX, playerY, cellSize, cellSize, null);
+                g2d.rotate(Math.toRadians(-180), playerX + cellSize / 2.0, playerY + cellSize / 2.0);
                 break;
             case Player.UP:
-                offscreenGraphics.rotate(Math.toRadians(-90), playerX + cellSize / 2.0, playerY + cellSize / 2.0);
-                offscreenGraphics.drawImage(pacmanImage, playerX, playerY, cellSize, cellSize, null);
-                offscreenGraphics.rotate(-Math.toRadians(-90), playerX + cellSize / 2.0, playerY + cellSize / 2.0);
+                g2d.rotate(Math.toRadians(-90), playerX + cellSize / 2.0, playerY + cellSize / 2.0);
+                g2d.drawImage(pacmanImage, playerX, playerY, cellSize, cellSize, null);
+                g2d.rotate(Math.toRadians(90), playerX + cellSize / 2.0, playerY + cellSize / 2.0);
                 break;
             case Player.DOWN:
-                offscreenGraphics.rotate(Math.toRadians(90), playerX + cellSize / 2.0, playerY + cellSize / 2.0);
-                offscreenGraphics.drawImage(pacmanImage, playerX, playerY, cellSize, cellSize, null);
-                offscreenGraphics.rotate(-Math.toRadians(90), playerX + cellSize / 2.0, playerY + cellSize / 2.0);
+                g2d.rotate(Math.toRadians(90), playerX + cellSize / 2.0, playerY + cellSize / 2.0);
+                g2d.drawImage(pacmanImage, playerX, playerY, cellSize, cellSize, null);
+                g2d.rotate(Math.toRadians(-90), playerX + cellSize / 2.0, playerY + cellSize / 2.0);
                 break;
         }
+        g2d.dispose();
 
         for (Enemy enemy : enemies) {
             offscreenGraphics.drawImage(enemyImage, enemy.getX() * cellSize, enemy.getY() * cellSize, cellSize, cellSize, null);
@@ -84,10 +134,13 @@ public class BoardPanel extends JPanel {
         offscreenGraphics.drawString("Score: " + player.getScore(), 10, 25);
         offscreenGraphics.drawString("Lives: " + player.getLives(), 10, 50);
 
-        g.drawImage(offscreenImage, 0, 0, this);
+        Graphics g2dPanel = getGraphics();
+        g2dPanel.drawImage(offscreenImage, 0, 0, this);
+        g2dPanel.dispose();
     }
 
-    public void render() {
-        repaint();
+    @Override
+    public Dimension getPreferredSize() {
+        return new Dimension(board.getWidth() * 40, board.getHeight() * 40);
     }
 }
