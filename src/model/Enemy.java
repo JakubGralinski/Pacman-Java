@@ -1,14 +1,12 @@
+import java.awt.Image;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class Enemy extends Character {
-    private Random random;
-    private int lastDirection;
-    private int originalSpeed;
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+    Random random;
+    int lastDirection;
+    float originalSpeed;
+    Image image; // Add image variable
 
     // Constants for directions
     public static final int RIGHT = 0;
@@ -16,11 +14,12 @@ public class Enemy extends Character {
     public static final int DOWN = 2;
     public static final int UP = 3;
 
-    public Enemy(int initialX, int initialY, int initialSpeed) {
+    public Enemy(int initialX, int initialY, float initialSpeed, Image image) {
         super(initialX, initialY, initialSpeed);
         this.random = new Random();
         this.lastDirection = -1; // No direction initially
         this.originalSpeed = initialSpeed;
+        this.image = image;
     }
 
     @Override
@@ -31,7 +30,7 @@ public class Enemy extends Character {
         while (!moved) {
             int direction = random.nextInt(4);
 
-            // Ensure the enemy doesn't move back to the previous position
+            // no movement to previous postion
             if (direction == getOppositeDirection(lastDirection)) {
                 continue;
             }
@@ -46,6 +45,7 @@ public class Enemy extends Character {
             int newX = this.x + dx;
             int newY = this.y + dy;
 
+            //ensure pos is between board's bounds and is not a wall
             if (newX >= 0 && newY >= 0 && newX < board.getWidth() && newY < board.getHeight() && !board.isWall(newX, newY)) {
                 this.x = newX;
                 this.y = newY;
@@ -71,14 +71,29 @@ public class Enemy extends Character {
 
     public void tryToSpawnUpgrade(Board board) {
         if (random.nextInt(100) < 25) { // 25% chance
-            String[] upgradeTypes = { Upgrade.SPEED_BOOST, Upgrade.EXTRA_LIFE, Upgrade.DOUBLE_POINTS, Upgrade.PASS_THROUGH_WALLS, Upgrade.SLOW_ENEMIES, Upgrade.STOP_ENEMIES };
+            String[] upgradeTypes = { Upgrade.SPEED_BOOST, Upgrade.EXTRA_LIFE, Upgrade.DOUBLE_POINTS, Upgrade.PASS_THROUGH_WALLS, Upgrade.SLOW_ENEMIES, Upgrade.FAST_ENEMIES };
             String type = upgradeTypes[random.nextInt(upgradeTypes.length)];
             board.addUpgrade(new Upgrade(this.x, this.y, type));
         }
     }
 
-    public void speedBoost(int durationSeconds, int boostAmount) {
+    public void speedBoost(int durationSeconds, float boostAmount) {
         this.speed += boostAmount;
-        scheduler.schedule(() -> this.speed = originalSpeed, durationSeconds, TimeUnit.SECONDS);
+        new Thread(() -> {
+            try {
+                Thread.sleep(durationSeconds * 1000);// *1000 gives seconds
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            this.speed = originalSpeed;
+        }).start();
+    }
+
+    public void resetSpeed() {
+        this.speed = originalSpeed;
+    }
+
+    public Image getImage() {
+        return image;
     }
 }

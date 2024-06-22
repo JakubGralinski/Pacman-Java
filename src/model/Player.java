@@ -1,7 +1,5 @@
+import javax.swing.JLabel;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public class Player extends Character {
     private int score;
@@ -9,9 +7,11 @@ public class Player extends Character {
     private int lives;
     private boolean doublePointsActive;
     private boolean passThroughWalls;
-    private int normalSpeed;
+    private float normalSpeed;
     private int pendingDirection;
-    private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private Thread speedBoostThread;
+    private boolean pacmanMouthOpen = true;
+    private JLabel playerLabel;
 
     // Constants for directions
     public static final int RIGHT = 0;
@@ -19,7 +19,7 @@ public class Player extends Character {
     public static final int DOWN = 2;
     public static final int UP = 3;
 
-    public Player(int initialX, int initialY, int initialSpeed, int lives) {
+    public Player(int initialX, int initialY, float initialSpeed, int lives) {
         super(initialX, initialY, initialSpeed);
         this.score = 0;
         this.direction = RIGHT; // Initial direction facing right
@@ -28,6 +28,7 @@ public class Player extends Character {
         this.passThroughWalls = false;
         this.normalSpeed = initialSpeed;
         this.pendingDirection = -1;
+        this.playerLabel = new JLabel(); // Initialize JLabel
     }
 
     public int getScore() {
@@ -58,18 +59,44 @@ public class Player extends Character {
 
     public void activateDoublePoints() {
         doublePointsActive = true;
-        scheduler.schedule(() -> doublePointsActive = false, 5, TimeUnit.SECONDS);
+        new Thread(() -> {
+            try {
+                Thread.sleep(5000); // Active for 5 seconds
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            doublePointsActive = false;
+        }).start();
     }
 
     public void enablePassThroughWalls() {
         passThroughWalls = true;
-        scheduler.schedule(() -> passThroughWalls = false, 5, TimeUnit.SECONDS);
+        new Thread(() -> {
+            try {
+                Thread.sleep(5000); // Active for 5 seconds
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            passThroughWalls = false;
+        }).start();
     }
 
-    public void activateSpeedBoost(int boostAmount, int durationSeconds) {
+    public void activateSpeedBoost(float boostAmount, int durationSeconds) {
         this.speed += boostAmount;
-        scheduler.schedule(() -> this.speed = normalSpeed, durationSeconds, TimeUnit.SECONDS);
+        if (speedBoostThread != null && speedBoostThread.isAlive()) {
+            speedBoostThread.interrupt();
+        }
+        speedBoostThread = new Thread(() -> {
+            try {
+                Thread.sleep(durationSeconds * 1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            this.speed = normalSpeed;
+        });
+        speedBoostThread.start();
     }
+
 
     @Override
     public void move(Board board, List<Enemy> enemies) {
@@ -101,9 +128,21 @@ public class Player extends Character {
         move(dx, dy, board, enemies);
     }
 
+    public void resetSpeed() {
+        this.speed = this.normalSpeed;
+    }
+
+/*    public JLabel getPlayerLabel() {
+        return playerLabel;
+    }
+
+    public void setPlayerLabel(JLabel playerLabel) {
+        this.playerLabel = playerLabel;
+    }*/
+
     public void move(int dx, int dy, Board board, List<Enemy> enemies) {
-        int newX = x + dx;
-        int newY = y + dy;
+        int newX = x + (int)(dx * speed);
+        int newY = y + (int)(dy * speed);
 
         if (newX >= 0 && newX < board.getWidth() && newY >= 0 && newY < board.getHeight() &&
                 (!board.isWall(newX, newY) || passThroughWalls)) {
@@ -123,9 +162,5 @@ public class Player extends Character {
                 }
             }
         }
-    }
-
-    public void setSpeed(int speed) {
-        this.speed = speed;
     }
 }

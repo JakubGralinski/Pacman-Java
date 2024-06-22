@@ -2,14 +2,13 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import javax.imageio.ImageIO;
 
 public class PacmanGame {
@@ -17,22 +16,35 @@ public class PacmanGame {
     private List<Enemy> enemies;
     private Board board;
     private BoardPanel boardPanel;
-    private Image pacmanImage;
-    private Image enemyImage;
-    private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private Image pacmanOpenMouthImage;
+    private Image pacmanClosedMouthImage;
+    private List<Image> enemyImages;
     private Random random = new Random();
     private boolean[] keysHeld = new boolean[4];
     private JFrame gameFrame;
     private JFrame mainMenuFrame;
+    private HighScoreManager highScoreManager = new HighScoreManager();
+    private final Object gameLock = new Object(); // Synchronization lock for game state
+    boolean running;
 
     public PacmanGame(String boardSize) {
         try {
-            pacmanImage = ImageIO.read(new File("src/sprites/pacman.png"));
-            enemyImage = ImageIO.read(new File("src/sprites/sprite_red.png"));
+            pacmanOpenMouthImage = ImageIO.read(new File("src/sprites/pacman_open.png"));
+            pacmanClosedMouthImage = ImageIO.read(new File("src/sprites/pacman_closed.png"));
+            enemyImages = loadEnemyImages();
         } catch (IOException e) {
             e.printStackTrace();
         }
         displayMainMenu();
+    }
+
+    private List<Image> loadEnemyImages() throws IOException {
+        List<Image> images = new ArrayList<>();
+        images.add(ImageIO.read(new File("src/sprites/sprite_blue.png")));
+        images.add(ImageIO.read(new File("src/sprites/sprite_pink.png")));
+        images.add(ImageIO.read(new File("src/sprites/sprite_red.png")));
+        images.add(ImageIO.read(new File("src/sprites/sprite_purple.png")));
+        return images;
     }
 
     public void displayMainMenu() {
@@ -54,9 +66,7 @@ public class PacmanGame {
             startNewGame();
         });
 
-        highScoresButton.addActionListener(e -> {
-            // Implement display of high scores
-        });
+        highScoresButton.addActionListener(e -> displayHighScores());
 
         exitButton.addActionListener(e -> System.exit(0));
 
@@ -69,8 +79,8 @@ public class PacmanGame {
     }
 
     private void startNewGame() {
-        String[] boardSizes = {"Small", "Medium", "Large", "Extra Large", "Giant"};
-        String selectedBoardSize = (String) JOptionPane.showInputDialog(null, "Choose board size:",
+        String[] boardSizes = {"Map1", "Map2", "Map3", "Map4", "Map5"};
+        String selectedBoardSize = (String) JOptionPane.showInputDialog(null, "Choose your map: ",
                 "Board Size Selection", JOptionPane.QUESTION_MESSAGE, null, boardSizes, boardSizes[0]);
 
         if (selectedBoardSize != null) {
@@ -85,7 +95,8 @@ public class PacmanGame {
 
         // Ensure player and enemies spawn in different positions
         int[] playerPos, enemyPos1, enemyPos2;
-        int initialSpeed = 1;
+        float playerSpeed = 1f;
+        float enemySpeed = 2f;
         int playerLives = 3;
 
         do {
@@ -96,11 +107,15 @@ public class PacmanGame {
                 (playerPos[0] == enemyPos2[0] && playerPos[1] == enemyPos2[1]) ||
                 (enemyPos1[0] == enemyPos2[0] && enemyPos1[1] == enemyPos2[1]));
 
-        this.player = new Player(playerPos[0], playerPos[1], initialSpeed, playerLives);
+        this.player = new Player(playerPos[0], playerPos[1], playerSpeed, playerLives);
         this.enemies = new ArrayList<>();
-        this.enemies.add(new Enemy(enemyPos1[0], enemyPos1[1], initialSpeed));
-        this.enemies.add(new Enemy(enemyPos2[0], enemyPos2[1], initialSpeed));
-        this.boardPanel = new BoardPanel(board, player, enemies, pacmanImage, enemyImage);
+
+        int numberOfEnemies = 4;
+        for (int i = 0; i < numberOfEnemies; i++) {
+            int[] enemyPos = validPositions.get(random.nextInt(validPositions.size()));
+            this.enemies.add(new Enemy(enemyPos[0], enemyPos[1], enemySpeed, enemyImages.get(random.nextInt(enemyImages.size()))));
+        }
+        this.boardPanel = new BoardPanel(board, player, enemies, pacmanOpenMouthImage, pacmanClosedMouthImage);
     }
 
     public void startGame() {
@@ -109,7 +124,14 @@ public class PacmanGame {
         }
 
         gameFrame = new JFrame("Pacman Game");
-        gameFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        gameFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        gameFrame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                gameFrame.dispose();
+                displayMainMenu();
+            }
+        });
         gameFrame.add(boardPanel);
         gameFrame.pack();
         gameFrame.setSize(new Dimension(boardPanel.getPreferredSize()));
@@ -128,14 +150,27 @@ public class PacmanGame {
         boardPanel.setFocusable(true);
         boardPanel.requestFocusInWindow();
 
-        new Thread(() -> {
-            while (player.getLives() > 0) {
-                try {
-                    Thread.sleep(100); // Check for collisions more frequently
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+        new Thread(this::gameLoop).start();
+        new Thread(this::enemyMovementLoop).start();
+        new Thread(this::spawnUpgrades).start();
+    }
 
+    private void resetGameState() {
+        player.resetSpeed();
+        for (Enemy enemy : enemies) {
+            enemy.resetSpeed();
+        }
+    }
+
+    private void gameLoop() {
+        while (player.getLives() > 0) {
+            try {
+                Thread.sleep(100); // Check for collisions more frequently
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            synchronized (gameLock) {
                 if (keysHeld[Player.UP]) player.setDirection(Player.UP);
                 if (keysHeld[Player.DOWN]) player.setDirection(Player.DOWN);
                 if (keysHeld[Player.LEFT]) player.setDirection(Player.LEFT);
@@ -145,7 +180,6 @@ public class PacmanGame {
 
                 // Check for collisions and subtract lives accordingly
                 for (Enemy enemy : enemies) {
-                    enemy.move(board, enemies);
                     if (enemy.checkCollision(player)) {
                         player.loseLife();
                         if (player.getLives() <= 0) {
@@ -161,79 +195,139 @@ public class PacmanGame {
                     return;
                 }
 
-                boardPanel.render();
+                boardPanel.repaint();
             }
-        }).start();
+        }
+    }
 
-        scheduler.scheduleAtFixedRate(this::spawnUpgrades, 0, 5, TimeUnit.SECONDS);
+    private void enemyMovementLoop() {
+        while (player.getLives() > 0) {
+            try {
+                Thread.sleep((int) (500 / enemies.get(0).getSpeed())); // Adjust this value for enemy movement speed
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            synchronized (gameLock) {
+                for (Enemy enemy : enemies) {
+                    enemy.move(board, enemies);
+                }
+                boardPanel.repaint();
+            }
+        }
     }
 
     private void spawnUpgrades() {
-        for (Enemy enemy : enemies) {
-            enemy.tryToSpawnUpgrade(board);
+        while (true) {
+            try {
+                Thread.sleep(5000); // Check every 5 seconds
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            synchronized (gameLock) {
+                for (Enemy enemy : enemies) {
+                    enemy.tryToSpawnUpgrade(board);
+                }
+                boardPanel.repaint();
+            }
         }
     }
 
     private void gameOver() {
-        JOptionPane.showMessageDialog(null, "Game Over! You have no more lives left.");
-        gameFrame.dispose();
-        displayMainMenu();
+        SwingUtilities.invokeLater(() -> {
+            JOptionPane.showMessageDialog(null, "Game Over! You have no more lives left.");
+            gameFrame.dispose();
+            resetGameState();
+            displayMainMenu();
+        });
     }
 
     private void winGame() {
-        JOptionPane.showMessageDialog(null, "Congratulations! You collected all the pellets!");
-        gameFrame.dispose();
-        displayMainMenu();
+        SwingUtilities.invokeLater(() -> {
+            String name = JOptionPane.showInputDialog(null, "Congratulations! You collected all the pellets! Enter your name:");
+            if (name != null && !name.trim().isEmpty()) {
+                highScoreManager.addHighScore(name, player.getScore());
+            }
+            gameFrame.dispose();
+            resetGameState();
+            displayMainMenu();
+        });
+    }
+
+    private void displayHighScores() {
+        SwingUtilities.invokeLater(() -> {
+            JFrame highScoreFrame = new JFrame("High Scores");
+            highScoreFrame.setSize(400, 600);
+            highScoreFrame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+            List<HighScore> highScores = highScoreManager.getHighScores();
+            DefaultListModel<String> listModel = new DefaultListModel<>();
+            for (HighScore highScore : highScores) {
+                listModel.addElement(highScore.toString());
+            }
+
+            JList<String> highScoreList = new JList<>(listModel);
+            JScrollPane scrollPane = new JScrollPane(highScoreList);
+            highScoreFrame.add(scrollPane);
+
+            highScoreFrame.setLocationRelativeTo(null);
+            highScoreFrame.setVisible(true);
+        });
     }
 
     private class PlayerMovementListener extends KeyAdapter {
         @Override
         public void keyPressed(KeyEvent e) {
-            int keyCode = e.getKeyCode();
-            switch (keyCode) {
-                case KeyEvent.VK_UP:
-                case KeyEvent.VK_W:
-                    keysHeld[Player.UP] = true;
-                    player.setDirection(Player.UP);
-                    break;
-                case KeyEvent.VK_DOWN:
-                case KeyEvent.VK_S:
-                    keysHeld[Player.DOWN] = true;
-                    player.setDirection(Player.DOWN);
-                    break;
-                case KeyEvent.VK_LEFT:
-                case KeyEvent.VK_A:
-                    keysHeld[Player.LEFT] = true;
-                    player.setDirection(Player.LEFT);
-                    break;
-                case KeyEvent.VK_RIGHT:
-                case KeyEvent.VK_D:
-                    keysHeld[Player.RIGHT] = true;
-                    player.setDirection(Player.RIGHT);
-                    break;
+            synchronized (gameLock) {
+                int keyCode = e.getKeyCode();
+                switch (keyCode) {
+                    case KeyEvent.VK_UP:
+                    case KeyEvent.VK_W:
+                        keysHeld[Player.UP] = true;
+                        player.setDirection(Player.UP);
+                        break;
+                    case KeyEvent.VK_DOWN:
+                    case KeyEvent.VK_S:
+                        keysHeld[Player.DOWN] = true;
+                        player.setDirection(Player.DOWN);
+                        break;
+                    case KeyEvent.VK_LEFT:
+                    case KeyEvent.VK_A:
+                        keysHeld[Player.LEFT] = true;
+                        player.setDirection(Player.LEFT);
+                        break;
+                    case KeyEvent.VK_RIGHT:
+                    case KeyEvent.VK_D:
+                        keysHeld[Player.RIGHT] = true;
+                        player.setDirection(Player.RIGHT);
+                        break;
+                }
             }
         }
 
         @Override
         public void keyReleased(KeyEvent e) {
-            int keyCode = e.getKeyCode();
-            switch (keyCode) {
-                case KeyEvent.VK_UP:
-                case KeyEvent.VK_W:
-                    keysHeld[Player.UP] = false;
-                    break;
-                case KeyEvent.VK_DOWN:
-                case KeyEvent.VK_S:
-                    keysHeld[Player.DOWN] = false;
-                    break;
-                case KeyEvent.VK_LEFT:
-                case KeyEvent.VK_A:
-                    keysHeld[Player.LEFT] = false;
-                    break;
-                case KeyEvent.VK_RIGHT:
-                case KeyEvent.VK_D:
-                    keysHeld[Player.RIGHT] = false;
-                    break;
+            synchronized (gameLock) {
+                int keyCode = e.getKeyCode();
+                switch (keyCode) {
+                    case KeyEvent.VK_UP:
+                    case KeyEvent.VK_W:
+                        keysHeld[Player.UP] = false;
+                        break;
+                    case KeyEvent.VK_DOWN:
+                    case KeyEvent.VK_S:
+                        keysHeld[Player.DOWN] = false;
+                        break;
+                    case KeyEvent.VK_LEFT:
+                    case KeyEvent.VK_A:
+                        keysHeld[Player.LEFT] = false;
+                        break;
+                    case KeyEvent.VK_RIGHT:
+                    case KeyEvent.VK_D:
+                        keysHeld[Player.RIGHT] = false;
+                        break;
+                }
             }
         }
     }

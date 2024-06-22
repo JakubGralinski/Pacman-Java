@@ -2,9 +2,9 @@ import java.util.List;
 
 public abstract class Character {
     protected int x, y;
-    protected int speed;
+    protected float speed;
 
-    public Character(int initialX, int initialY, int initialSpeed) {
+    public Character(int initialX, int initialY, float initialSpeed) {
         this.x = initialX;
         this.y = initialY;
         this.speed = initialSpeed;
@@ -18,14 +18,13 @@ public abstract class Character {
         return y;
     }
 
-    public int getSpeed() {
+    public float getSpeed() {
         return speed;
     }
 
-    public void setSpeed(int speed) {
+    public void setSpeed(float speed) {
         this.speed = speed;
     }
-
 
     public abstract void move(Board board, List<Enemy> enemies);
 }

@@ -6,7 +6,7 @@ public class Upgrade {
     public static final String DOUBLE_POINTS = "double_points";
     public static final String PASS_THROUGH_WALLS = "pass_through_walls";
     public static final String SLOW_ENEMIES = "slow_enemies";
-    public static final String STOP_ENEMIES = "fast_enemies"; // Rename to fast_enemies
+    public static final String FAST_ENEMIES = "fast_enemies";
 
     private int x, y;
     private String type;
@@ -32,7 +32,7 @@ public class Upgrade {
     public void applyEffect(Player player, List<Enemy> enemies) {
         switch (type) {
             case SPEED_BOOST:
-                player.activateSpeedBoost(1, 5); // Increase speed by 1 for 5 seconds
+                player.activateSpeedBoost(1.0f, 2); // Increase speed by 1 for 5 seconds
                 break;
             case EXTRA_LIFE:
                 player.gainLife();
@@ -44,10 +44,14 @@ public class Upgrade {
                 player.enablePassThroughWalls();
                 break;
             case SLOW_ENEMIES:
-                enemies.forEach(enemy -> enemy.setSpeed(enemy.getSpeed() - 1));
+                for (Enemy enemy : enemies) {
+                    enemy.speedBoost(2, -1f); // Decrease speed by 0.5 for 5 seconds
+                }
                 break;
-            case STOP_ENEMIES:
-                enemies.forEach(enemy -> enemy.speedBoost(5, 1)); // Increase each enemy's speed by 1 for 5 seconds
+            case FAST_ENEMIES:
+                for (Enemy enemy : enemies) {
+                    enemy.speedBoost(2, 1f); // Increase speed by 0.5 for 5 seconds
+                }
                 break;
         }
     }
