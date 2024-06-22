@@ -1,3 +1,13 @@
+package controller;
+
+import model.Board;
+import model.Enemy;
+import util.HighScore;
+import util.HighScoreManager;
+import model.Player;
+import view.BoardPanel;
+
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyAdapter;
@@ -9,7 +19,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import javax.imageio.ImageIO;
 
 public class PacmanGame {
     private Player player;

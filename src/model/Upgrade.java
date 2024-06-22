@@ -1,8 +1,10 @@
+package model;
+
 import java.util.List;
 
 public class Upgrade {
-    public static final String SPEED_BOOST = "speed";
-    public static final String EXTRA_LIFE = "life";
+    public static final String SPEED_BOOST = "speed_boost";
+    public static final String EXTRA_LIFE = "extra_life";
     public static final String DOUBLE_POINTS = "double_points";
     public static final String PASS_THROUGH_WALLS = "pass_through_walls";
     public static final String SLOW_ENEMIES = "slow_enemies";
@@ -32,7 +34,7 @@ public class Upgrade {
     public void applyEffect(Player player, List<Enemy> enemies) {
         switch (type) {
             case SPEED_BOOST:
-                player.activateSpeedBoost(1.0f, 2); // Increase speed by 1 for 5 seconds
+                player.activateSpeedBoost(1.5f, 5);
                 break;
             case EXTRA_LIFE:
                 player.gainLife();
@@ -45,12 +47,12 @@ public class Upgrade {
                 break;
             case SLOW_ENEMIES:
                 for (Enemy enemy : enemies) {
-                    enemy.speedBoost(2, -1f); // Decrease speed by 0.5 for 5 seconds
+                    enemy.speedBoost(2, -1f);
                 }
                 break;
             case FAST_ENEMIES:
                 for (Enemy enemy : enemies) {
-                    enemy.speedBoost(2, 1f); // Increase speed by 0.5 for 5 seconds
+                    enemy.speedBoost(2, -1f);
                 }
                 break;
         }

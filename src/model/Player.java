@@ -1,3 +1,5 @@
+package model;
+
 import javax.swing.JLabel;
 import java.util.List;
 
@@ -10,7 +12,6 @@ public class Player extends Character {
     private float normalSpeed;
     private int pendingDirection;
     private Thread speedBoostThread;
-    private boolean pacmanMouthOpen = true;
     private JLabel playerLabel;
 
     // Constants for directions
@@ -97,7 +98,6 @@ public class Player extends Character {
         speedBoostThread.start();
     }
 
-
     @Override
     public void move(Board board, List<Enemy> enemies) {
         if (pendingDirection != -1) {
@@ -131,14 +131,6 @@ public class Player extends Character {
     public void resetSpeed() {
         this.speed = this.normalSpeed;
     }
-
-/*    public JLabel getPlayerLabel() {
-        return playerLabel;
-    }
-
-    public void setPlayerLabel(JLabel playerLabel) {
-        this.playerLabel = playerLabel;
-    }*/
 
     public void move(int dx, int dy, Board board, List<Enemy> enemies) {
         int newX = x + (int)(dx * speed);

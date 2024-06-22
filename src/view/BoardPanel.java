@@ -1,3 +1,10 @@
+package view;
+
+import model.Board;
+import model.Enemy;
+import model.Player;
+import model.Upgrade;
+
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
@@ -7,23 +14,23 @@ import java.io.IOException;
 import java.util.List;
 
 public class BoardPanel extends JPanel {
-    Board board;
-    Player player;
-    List<Enemy> enemies;
-    Image pacmanOpenMouthImage;
-    Image pacmanClosedMouthImage;
-    Image speedBoostImage;
-    Image extraLifeImage;
-    Image doublePointsImage;
-    Image passThroughWallsImage;
-    Image slowEnemiesImage;
-    Image pelletImage;
-    Image fastEnemiesImage;
-    BufferedImage offscreenImage;
-    Graphics2D offscreenGraphics;
-    boolean pacmanMouthOpen = true;
-    Thread animationThread;
-    boolean running = true;
+    private Board board;
+    private Player player;
+    private List<Enemy> enemies;
+    private Image pacmanOpenMouthImage;
+    private Image pacmanClosedMouthImage;
+    private Image speedBoostImage;
+    private Image extraLifeImage;
+    private Image doublePointsImage;
+    private Image passThroughWallsImage;
+    private Image slowEnemiesImage;
+    private Image pelletImage;
+    private Image fastEnemiesImage;
+    private BufferedImage offscreenImage;
+    private Graphics2D offscreenGraphics;
+    private boolean pacmanMouthOpen = true;
+    private Thread animationThread;
+    private boolean running = true;
 
     public BoardPanel(Board board, Player player, List<Enemy> enemies, Image pacmanOpenMouthImage, Image pacmanClosedMouthImage) {
         this.board = board;

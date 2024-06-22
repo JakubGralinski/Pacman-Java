@@ -1,12 +1,14 @@
+package model;
+
 import java.awt.Image;
 import java.util.List;
 import java.util.Random;
 
 public class Enemy extends Character {
-    Random random;
-    int lastDirection;
-    float originalSpeed;
-    Image image; // Add image variable
+    private Random random;
+    private int lastDirection;
+    private float originalSpeed;
+    private Image image;
 
     // Constants for directions
     public static final int RIGHT = 0;
@@ -30,7 +32,7 @@ public class Enemy extends Character {
         while (!moved) {
             int direction = random.nextInt(4);
 
-            // no movement to previous postion
+            // no movement to previous position
             if (direction == getOppositeDirection(lastDirection)) {
                 continue;
             }
@@ -45,7 +47,7 @@ public class Enemy extends Character {
             int newX = this.x + dx;
             int newY = this.y + dy;
 
-            //ensure pos is between board's bounds and is not a wall
+            // ensure pos is between board's bounds and is not a wall
             if (newX >= 0 && newY >= 0 && newX < board.getWidth() && newY < board.getHeight() && !board.isWall(newX, newY)) {
                 this.x = newX;
                 this.y = newY;
@@ -81,7 +83,7 @@ public class Enemy extends Character {
         this.speed += boostAmount;
         new Thread(() -> {
             try {
-                Thread.sleep(durationSeconds * 1000);// *1000 gives seconds
+                Thread.sleep(durationSeconds * 1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

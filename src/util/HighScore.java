@@ -1,9 +1,11 @@
+package util;
+
 import java.io.Serializable;
 
 public class HighScore implements Serializable {
     static final long serialVersionUID = 1L;
-    String name;
-    int score;
+    private String name;
+    private int score;
 
     public HighScore(String name, int score) {
         this.name = name;

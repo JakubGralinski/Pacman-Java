@@ -1,19 +1,21 @@
+package util;
+
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class HighScoreManager implements Serializable{
-    List<HighScore> highScores;
-    static final String HIGH_SCORES_FILE = "highscores.txt";
+public class HighScoreManager implements Serializable {
+    private List<util.HighScore> highScores;
+    private static final String HIGH_SCORES_FILE = "res/highscores.txt";
 
     public HighScoreManager() {
         loadHighScores();
     }
 
     public void addHighScore(String name, int score) {
-        highScores.add(new HighScore(name, score));
+        highScores.add(new util.HighScore(name, score));
         Collections.sort(highScores, (hs1, hs2) -> Integer.compare(hs2.getScore(), hs1.getScore())); // Sort in descending order
         saveHighScores();
     }
